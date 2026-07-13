@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-export default function ArtistView({ activeTab }) {
-  // Local state to store catalog tracks fetched from the server
-  const [myUploads, setMyUploads] = useState([
-    { id: 1, title: 'Midnight Drive', genre: 'Synthwave', date: 'June 12, 2026', plays: 124 }
-  ]);
-
-  // Form submission states
+export default function ArtistView({ activeTab, tracks, currentTrack, isPlaying, onPlayTrack, refreshTracks }) {
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState('');
   const [accessMode, setAccessMode] = useState('open');
@@ -29,7 +23,6 @@ export default function ArtistView({ activeTab }) {
     setLoading(true);
     setStatusMessage('');
 
-    // Construct multipart form data for file uploading
     const formData = new FormData();
     formData.append('title', title);
     formData.append('genre', genre);
@@ -37,7 +30,7 @@ export default function ArtistView({ activeTab }) {
     formData.append('audio', audioFile);
 
     try {
-      const token = localStorage.getItem('token'); // Retrieve stored authentication payload
+      const token = localStorage.getItem('token');
       const response = await axios.post('http://localhost:5000/api/tracks/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -46,13 +39,13 @@ export default function ArtistView({ activeTab }) {
       });
 
       setStatusMessage(`🎉 ${response.data.message}`);
-      
-      // Clear forms out upon successful publication
       setTitle('');
       setGenre('');
       setAccessMode('open');
       setAudioFile(null);
-      e.target.reset(); // Resets the native HTML file input display element
+      e.target.reset();
+      
+      if (refreshTracks) refreshTracks(); // Pull latest catalog update
     } catch (error) {
       setStatusMessage(error.response?.data?.message || '❌ Upload execution failed.');
     } finally {
@@ -65,7 +58,7 @@ export default function ArtistView({ activeTab }) {
       <div className="max-w-2xl bg-zinc-900 border border-zinc-850 rounded-2xl p-6 space-y-4 animate-fadeIn">
         <div>
           <h2 className="text-xl font-bold text-white">Publish a New Track</h2>
-          <p className="text-zinc-400 text-xs">Upload your audio file directly to make it instantly streamable for listeners.</p>
+          <p className="text-zinc-400 text-xs">Upload your audio file directly to make it instantly streamable.</p>
         </div>
         
         <form className="space-y-4 pt-2" onSubmit={handleUploadSubmit}>
@@ -107,7 +100,7 @@ export default function ArtistView({ activeTab }) {
           </div>
           
           <div>
-            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Select Audio File (.mp3 or .wav)</label>
+            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Select Audio File</label>
             <input 
               type="file" 
               accept="audio/*" 
@@ -135,29 +128,21 @@ export default function ArtistView({ activeTab }) {
     );
   }
 
-  // default 'home/catalog' layout view for artists
+  // Fallback / default 'home' or 'catalog' dynamic layout
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-bold text-white">Artist Studio Dashboard</h2>
-          <p className="text-zinc-400 text-sm">Monitor how your tracks are doing across the platform.</p>
-        </div>
+      <div>
+        <h2 className="text-xl font-bold text-white">Artist Studio Dashboard</h2>
+        <p className="text-zinc-400 text-sm">Monitor how your tracks are doing across the platform.</p>
       </div>
 
-      {/* Small Local Stats Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="p-5 bg-zinc-900 border border-zinc-850 rounded-xl">
-          <p className="text-zinc-500 text-xs font-medium uppercase tracking-wider">Total Track Plays</p>
-          <h3 className="text-3xl font-bold mt-1 text-purple-400">{myUploads.reduce((acc, s) => acc + s.plays, 0)}</h3>
-        </div>
-        <div className="p-5 bg-zinc-900 border border-zinc-850 rounded-xl">
           <p className="text-zinc-500 text-xs font-medium uppercase tracking-wider">Tracks Published</p>
-          <h3 className="text-3xl font-bold mt-1 text-white">{myUploads.length}</h3>
+          <h3 className="text-3xl font-bold mt-1 text-white">{tracks.length}</h3>
         </div>
       </div>
 
-      {/* Catalog Manager Table */}
       <div className="bg-zinc-900 border border-zinc-850 rounded-xl overflow-hidden">
         <h3 className="p-4 bg-zinc-950/40 text-sm font-semibold border-b border-zinc-850 text-white">Your Released Catalog</h3>
         <table className="w-full text-left text-sm text-zinc-300">
@@ -165,19 +150,29 @@ export default function ArtistView({ activeTab }) {
             <tr>
               <th className="px-6 py-3.5">Title</th>
               <th className="px-6 py-3.5">Genre</th>
-              <th className="px-6 py-3.5">Upload Date</th>
-              <th className="px-6 py-3.5 text-right">Plays</th>
+              <th className="px-6 py-3.5 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-850">
-            {myUploads.map((upload) => (
-              <tr key={upload.id} className="hover:bg-zinc-850/20 transition-colors">
-                <td className="px-6 py-4 font-medium text-white flex items-center gap-2">💿 {upload.title}</td>
-                <td className="px-6 py-4 text-zinc-400">{upload.genre}</td>
-                <td className="px-6 py-4 text-zinc-500">{upload.date}</td>
-                <td className="px-6 py-4 text-right text-purple-400 font-bold">{upload.plays}</td>
+            {tracks.map((track) => (
+              <tr key={track._id || track.id} className="hover:bg-zinc-850/20 transition-colors">
+                <td className="px-6 py-4 font-medium text-white">💿 {track.title}</td>
+                <td className="px-6 py-4 text-zinc-400">{track.genre}</td>
+                <td className="px-6 py-4 text-right">
+                  <button 
+                    onClick={() => onPlayTrack(track)}
+                    className="text-xs font-bold text-purple-400 hover:underline"
+                  >
+                    {currentTrack?._id === track._id && isPlaying ? 'Pause ⏸️' : 'Play ▶️'}
+                  </button>
+                </td>
               </tr>
             ))}
+            {tracks.length === 0 && (
+              <tr>
+                <td colSpan="3" className="px-6 py-8 text-center text-zinc-500 text-xs">No tracks in database yet. Move to Upload Studio!</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

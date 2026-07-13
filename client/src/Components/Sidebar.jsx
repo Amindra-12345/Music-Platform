@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Sidebar({ userRole, activeTab, setActiveTab }) {
+export default function Sidebar({ userRole, activeTab, setActiveTab, onLogout }) {
   return (
     <div className="w-64 bg-zinc-950 h-full p-6 flex flex-col justify-between border-r border-zinc-850">
       <div className="space-y-8">
@@ -14,7 +14,6 @@ export default function Sidebar({ userRole, activeTab, setActiveTab }) {
         <nav className="space-y-2">
           <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold px-2 mb-3">Menu</p>
           
-          {/* Shared Home Option */}
           <button 
             onClick={() => setActiveTab('home')}
             className={`w-full text-left p-2.5 rounded-lg text-sm font-medium transition-all ${
@@ -24,7 +23,6 @@ export default function Sidebar({ userRole, activeTab, setActiveTab }) {
             🏠 Home Overview
           </button>
 
-          {/* Conditional items based on user role */}
           {userRole === 'artist' ? (
             <>
               <button 
@@ -68,11 +66,19 @@ export default function Sidebar({ userRole, activeTab, setActiveTab }) {
       </div>
 
       {/* User Status Profile Footer */}
-      <div className="border-t border-zinc-850 pt-4 flex flex-col gap-1">
-        <span className="text-xs text-zinc-500 font-medium">Logged in as:</span>
-        <span className="text-xs font-semibold px-2 py-1 rounded bg-zinc-900 border border-zinc-800 inline-block max-w-max capitalize text-zinc-300">
-          {userRole}
-        </span>
+      <div className="border-t border-zinc-850 pt-4 flex flex-col gap-2">
+        <div>
+          <span className="text-xs text-zinc-500 font-medium block mb-1">Logged in as:</span>
+          <span className="text-xs font-semibold px-2 py-1 rounded bg-zinc-900 border border-zinc-800 inline-block capitalize text-zinc-300">
+            {userRole}
+          </span>
+        </div>
+        <button 
+          onClick={onLogout}
+          className="text-left text-xs text-red-400 hover:text-red-300 transition-colors mt-1 px-1"
+        >
+          🚪 Sign Out Session
+        </button>
       </div>
     </div>
   );
