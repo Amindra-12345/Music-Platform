@@ -19,7 +19,12 @@ exports.uploadTrack = async (req, res) => {
       artist: req.user.id // Taken directly from our protect middleware token
     });
 
-    res.status(201).json(track);
+    // Added a message key so your React frontend's status toast prints nicely
+    res.status(201).json({
+      success: true,
+      message: 'Track published successfully!',
+      track
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -34,5 +39,27 @@ exports.getAllTracks = async (req, res) => {
     res.json(tracks);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// @desc    Get all tracks published by the logged-in artist
+// @route   GET /api/tracks/my-catalog
+// @access  Private (Artist only)
+exports.getArtistTracks = async (req, res) => {
+  try {
+    // Look up tracks where the 'artist' field matches the authenticated user's ID
+    // Sorted by newest uploads first
+    const tracks = await Track.find({ artist: req.user.id }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: tracks.length,
+      tracks
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      message: err.message 
+    });
   }
 };

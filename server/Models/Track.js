@@ -18,7 +18,7 @@ const trackSchema = new mongoose.Schema({
   },
   audioUrl: { 
     type: String, 
-    required: true // This will store the local server file path (e.g., "uploads/song-123.mp3")
+    required: true // Storing the local path e.g., "uploads/1718293-song.mp3"
   },
   accessMode: { 
     type: String, 
@@ -27,4 +27,5 @@ const trackSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Exporting as 'Track' matches our route controllers perfectly
 module.exports = mongoose.model('Track', trackSchema);

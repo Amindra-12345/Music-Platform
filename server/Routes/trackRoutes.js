@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { uploadTrack, getAllTracks } = require('../controllers/trackController');
+// 🌟 Added getArtistTracks to the controller imports
+const { uploadTrack, getAllTracks, getArtistTracks } = require('../controllers/trackController');
 const { protect, authorizeRoles } = require('../Middleware/auth.js');
+
 // Configure Multer storage engine
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -28,5 +30,8 @@ const upload = multer({ storage, fileFilter });
 // Routes definitions
 router.post('/upload', protect, authorizeRoles('artist'), upload.single('audio'), uploadTrack);
 router.get('/', protect, getAllTracks);
+
+// 🔍 🌟 Fetch all tracks belonging to the logged-in artist
+router.get('/my-catalog', protect, authorizeRoles('artist'), getArtistTracks);
 
 module.exports = router;
