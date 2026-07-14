@@ -1,135 +1,127 @@
 import React from 'react';
 
 export default function ListenerView({ activeTab, tracks, currentTrack, isPlaying, onPlayTrack }) {
-  
-  // Hardcoded mock metadata to match the interface design aesthetics
-  const artists = [
-    { name: 'Dhyan Hewage', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=60' },
-    { name: 'DILU Beats', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=60' },
-    { name: 'Anirudh Ravichander', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=60' },
-    { name: 'A.R. Rahman', img: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=60' },
-    { name: 'Mihiran', img: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=150&auto=format&fit=crop&q=60' },
-    { name: 'Yasas Medagedara', img: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=60' }
-  ];
+  // 1. Separate the API data stream into organized UI rows
+  const internationalHits = tracks.filter(track => track.isInternational);
+  const communityTracks = tracks.filter(track => !track.isInternational);
 
-  // --- PLAYLISTS ROUTE ---
-  if (activeTab === 'playlists' || activeTab === 'connect') {
-    return (
-      <div className="space-y-4 animate-fadeIn">
-        <div>
-          <h2 className="text-xl font-bold text-white">Your Playlists</h2>
-          <p className="text-zinc-400 text-xs">Manage your custom libraries here.</p>
-        </div>
-        <div className="p-8 bg-zinc-900/40 border border-zinc-800 rounded-xl max-w-sm text-center">
-          <span className="text-3xl">➕</span>
-          <h4 className="font-bold mt-2 text-white">Create your first playlist</h4>
-          <p className="text-xs text-zinc-500 mt-1">It's easy, we'll help you.</p>
-          <button className="mt-4 px-4 py-1.5 text-xs font-bold bg-white text-black rounded-full hover:scale-105 transition-transform">
-            Create playlist
-          </button>
-        </div>
-      </div>
-    );
+  // Group artists uniquely for the circular portrait gallery row
+  const uniqueArtists = Array.from(new Set(tracks.map(t => t.genre || "Global Hit"))).map(artistName => {
+    const trackMatch = tracks.find(t => (t.genre || "Global Hit") === artistName);
+    return {
+      name: artistName,
+      imageUrl: trackMatch?.imageUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300"
+    };
+  });
+
+  if (activeTab !== 'home') {
+    return <div className="text-zinc-500 text-xs p-6">Library sub-modules loading...</div>;
   }
 
   return (
-    <div className="space-y-10 pb-24 animate-fadeIn">
+    <div className="space-y-10 text-white pb-24">
       
-      {/* SECTION 1: TRENDING SONGS */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight text-white hover:underline cursor-pointer">Trending songs</h2>
-          <button className="text-xs font-bold text-zinc-400 hover:text-white transition-colors">Show all</button>
+      {/* ─── ROW 1: DYNAMIC PLAYLISTS CAROUSEL (SQUARE CARD ROW) ─── */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold tracking-tight text-white">New Release Playlists</h2>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-2 text-zinc-400 text-sm">
+              <button className="hover:text-white transition p-1">‹</button>
+              <button className="hover:text-white transition p-1">›</button>
+            </div>
+            <button className="text-xs font-bold text-zinc-400 hover:text-white uppercase tracking-wider">See All</button>
+          </div>
+        </div>
+        
+        {/* Horizontal Container Slider */}
+        <div className="flex gap-5 overflow-x-auto scrollbar-none pb-2">
+          {internationalHits.map(track => (
+            <div 
+              key={track._id} 
+              onClick={() => onPlayTrack(track)}
+              className="w-[170px] flex-shrink-0 cursor-pointer group snap-start"
+            >
+              <div className="w-[170px] h-[170px] bg-zinc-900 rounded-md overflow-hidden relative shadow-lg">
+                <img 
+                  src={track.imageUrl} 
+                  alt={track.title} 
+                  className="w-full h-full object-cover transition duration-300 group-hover:scale-105" 
+                />
+                {/* Floating Play Overlay Hover Indicator */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-105 transition-opacity flex items-center justify-center">
+                  <span className="text-2xl">{currentTrack?._id === track._id && isPlaying ? '⏸️' : '▶️'}</span>
+                </div>
+              </div>
+              <h3 className="text-sm font-bold mt-2 truncate text-zinc-100 group-hover:text-purple-400 transition-colors">
+                {track.title}
+              </h3>
+              <p className="text-xs text-zinc-400 truncate mt-0.5">{track.genre}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── ROW 2: HOT SONGS COMPACT MULTI-COLUMN GRID ─── */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold tracking-tight text-white">Hot Songs</h2>
+          <button className="text-xs font-bold text-zinc-400 hover:text-white uppercase tracking-wider">See All</button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {tracks.slice(0, 6).map((track) => {
-            const isCurrent = currentTrack?._id === track._id;
-            return (
-              <div 
-                key={track._id || track.id}
-                onClick={() => onPlayTrack(track)}
-                className={`p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/40 hover:bg-zinc-800/60 transition-all duration-300 group cursor-pointer relative`}
-              >
-                {/* Square Album Cover Box */}
-                <div className="aspect-square w-full bg-gradient-to-br from-purple-900/40 to-zinc-800 rounded-lg flex items-center justify-center text-3xl shadow-md relative overflow-hidden mb-3">
-                  💿
-                  {/* Floating Play/Pause Action overlay */}
-                  <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-200">
-                    <button className="w-10 h-10 rounded-full bg-green-500 text-black flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 text-sm font-bold">
-                      {isCurrent && isPlaying ? '⏸️' : '▶️'}
-                    </button>
+        {/* 3-Column Column Flow List System matching Amazon's compact row format */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
+          {tracks.slice(0, 9).map(track => (
+            <div 
+              key={track._id}
+              onClick={() => onPlayTrack(track)}
+              className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition ${
+                currentTrack?._id === track._id ? 'bg-zinc-800/80 border border-purple-500/30' : 'bg-zinc-900/40 hover:bg-zinc-800/50'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 bg-zinc-800 rounded overflow-hidden flex-shrink-0 relative group">
+                  <img src={track.imageUrl} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs">
+                    {currentTrack?._id === track._id && isPlaying ? '⏸️' : '▶️'}
                   </div>
                 </div>
-                <h3 className={`font-bold text-xs truncate ${isCurrent ? 'text-green-400' : 'text-white'}`}>
-                  {track.title}
-                </h3>
-                <p className="text-[11px] text-zinc-400 truncate mt-1 capitalize">{track.genre}</p>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-semibold truncate text-white">{track.title}</h4>
+                  <p className="text-xs text-zinc-400 truncate mt-0.5">{track.genre}</p>
+                </div>
               </div>
-            );
-          })}
-
-          {tracks.length === 0 && (
-            <div className="col-span-full py-8 text-zinc-500 text-xs italic">
-              No music tracks uploaded in the database system yet.
+              <span className="text-zinc-500 text-xs pr-2">3:12</span>
             </div>
-          )}
+          ))}
         </div>
-      </section>
+      </div>
 
-      {/* SECTION 2: POPULAR ARTISTS */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight text-white hover:underline cursor-pointer">Popular artists</h2>
-          <button className="text-xs font-bold text-zinc-400 hover:text-white transition-colors">Show all</button>
+      {/* ─── ROW 3: HOT ARTISTS PERFECT CIRCLES ─── */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold tracking-tight text-white">Hot Artists</h2>
+          <button className="text-xs font-bold text-zinc-400 hover:text-white uppercase tracking-wider">See All</button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {artists.map((artist, idx) => (
-            <div 
-              key={idx}
-              className="p-4 rounded-xl bg-transparent hover:bg-zinc-900/40 transition-all duration-200 group text-center cursor-pointer"
-            >
-              {/* Circular Avatar Frame */}
-              <div className="w-28 h-28 mx-auto rounded-full overflow-hidden shadow-lg border border-zinc-800 bg-zinc-900 mb-3 relative">
+        <div className="flex gap-6 overflow-x-auto scrollbar-none pb-2">
+          {uniqueArtists.map((artist, idx) => (
+            <div key={idx} className="w-[140px] flex-shrink-0 flex flex-col items-center group cursor-pointer">
+              <div className="w-[130px] h-[130px] rounded-full overflow-hidden border border-zinc-800 shadow-md bg-zinc-900 transition duration-300 group-hover:border-purple-500">
                 <img 
-                  src={artist.img} 
+                  src={artist.imageUrl} 
                   alt={artist.name} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover transition duration-300 group-hover:scale-105 grayscale group-hover:grayscale-0" 
                 />
               </div>
-              <h3 className="font-bold text-xs text-white truncate px-1">{artist.name}</h3>
-              <p className="text-[11px] text-zinc-500 mt-0.5">Artist</p>
+              <span className="text-xs font-medium mt-3 text-zinc-300 group-hover:text-white transition-colors text-center truncate w-full">
+                {artist.name}
+              </span>
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* SECTION 3: ALBUMS AND SINGLES */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight text-white hover:underline cursor-pointer">Popular albums and singles</h2>
-          <button className="text-xs font-bold text-zinc-400 hover:text-white transition-colors">Show all</button>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {/* Sample dynamic wrapper mapping album view */}
-          {tracks.slice().reverse().map((track, idx) => (
-            <div 
-              key={idx}
-              onClick={() => onPlayTrack(track)}
-              className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/40 hover:bg-zinc-800/60 transition-all duration-200 group cursor-pointer"
-            >
-              <div className="aspect-square w-full bg-gradient-to-tr from-indigo-950/40 to-zinc-900 rounded-lg flex items-center justify-center text-3xl shadow-md mb-3">
-                🎵
-              </div>
-              <h3 className="font-bold text-xs text-white truncate">{track.title}</h3>
-              <p className="text-[11px] text-zinc-400 truncate mt-0.5 capitalize">{track.genre} Remix</p>
-            </div>
-          ))}
-        </div>
-      </section>
-      
     </div>
   );
 }
