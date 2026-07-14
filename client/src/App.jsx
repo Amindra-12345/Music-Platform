@@ -7,25 +7,19 @@ import ListenerView from './components/ListenerView';
 import Register from './pages/Register';
 
 export default function App() {
-  // Global Session States (Empty string means public guest viewer)
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(null);
   
-  // Auth Modal/View Controls
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLoginView, setIsLoginView] = useState(true);
-  const [initialRole, setInitialRole] = useState('listener'); // default pick
-  
-  // Navigation State
+  const [initialRole, setInitialRole] = useState('listener');
   const [activeTab, setActiveTab] = useState('home');
 
-  // Audio Playback Engine States
   const [tracks, setTracks] = useState([]);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audio] = useState(new Audio());
 
-  // Bootstrap Auth Session or Public View on Load
   useEffect(() => {
     if (token) {
       setUser({
@@ -33,7 +27,7 @@ export default function App() {
         role: localStorage.getItem('userRole') || 'listener'
       });
     }
-    loadTracks(); // Fetch catalog publicly for Google visitors!
+    loadTracks();
   }, [token]);
 
   const loadTracks = async () => {
@@ -46,7 +40,6 @@ export default function App() {
   };
 
   const handlePlayTrack = (track) => {
-    // GUEST GUARD: If a public user tries to listen, redirect to sign up/in
     if (!token) {
       setIsLoginView(false);
       setShowAuthModal(true);
@@ -87,11 +80,9 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden select-none">
-      
-      {/* Dynamic Main Layout Frame */}
       <div className="flex flex-1 min-h-0 p-2 gap-2">
         
-        {/* Sidebar Frame */}
+        {/* Sidebar Frame - Brand Synced to SoundSoul */}
         <Sidebar 
           userRole={user?.role || 'guest'} 
           activeTab={activeTab} 
@@ -100,13 +91,17 @@ export default function App() {
           triggerAuth={() => triggerAuthFlow(true)}
         />
 
-        {/* Core Workspace Frame */}
-        <div className="flex-1 bg-gradient-to-b from-[#222] to-[#121212] rounded-lg overflow-y-auto flex flex-col scrollbar-thin">
+        {/* Dashboard Workspace */}
+        <div className="flex-1 bg-gradient-to-b from-[#1c1917] via-[#0c0a09] to-black rounded-xl overflow-y-auto flex flex-col scrollbar-none relative border border-zinc-800/40">
           
-          {/* --- TOP HEADER ROW: SIGN IN / SIGN UP SYSTEM BAR --- */}
-          <header className="p-4 flex justify-between items-center bg-zinc-900/40 rounded-t-lg backdrop-blur-md sticky top-0 z-20">
-            <div className="text-sm font-semibold text-zinc-400">
-              {token ? `Welcome back, ${user?.email}` : "✨ Explore trending tracks publicly"}
+          {/* TOP INTERACTIVE NAVBAR */}
+          <header className="p-4 flex justify-between items-center bg-zinc-900/40 backdrop-blur-md sticky top-0 z-20 border-b border-zinc-800/30">
+            <div className="text-sm font-medium text-zinc-400">
+              {token ? (
+                <span className="flex items-center gap-2">✨ Active Studio: <strong className="text-white">{user?.email}</strong></span>
+              ) : (
+                <span className="text-purple-400 font-semibold animate-pulse">🎵 Welcome to the SoundSoul Network</span>
+              )}
             </div>
             
             <div className="flex items-center gap-3">
@@ -114,19 +109,19 @@ export default function App() {
                 <>
                   <button 
                     onClick={() => triggerAuthFlow(true)} 
-                    className="text-sm font-bold text-zinc-300 hover:text-white px-4 py-2 transition-colors"
+                    className="text-sm font-bold text-zinc-400 hover:text-white px-4 py-2 transition-colors duration-200"
                   >
                     Sign In
                   </button>
                   <button 
                     onClick={() => triggerAuthFlow(false, 'listener')} 
-                    className="text-sm font-bold bg-white text-black px-4 py-2 rounded-full hover:scale-105 transition-all"
+                    className="text-sm font-bold bg-zinc-900 text-white border border-zinc-700 px-4 py-2 rounded-full hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-black/40"
                   >
                     Join as Listener
                   </button>
                   <button 
                     onClick={() => triggerAuthFlow(false, 'artist')} 
-                    className="text-sm font-bold bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-full hover:scale-105 transition-all"
+                    className="text-sm font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-full hover:from-purple-500 hover:to-indigo-500 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-purple-900/20"
                   >
                     Join as Artist
                   </button>
@@ -134,16 +129,29 @@ export default function App() {
               ) : (
                 <button 
                   onClick={handleLogout}
-                  className="text-xs bg-zinc-800 hover:bg-zinc-750 text-zinc-300 font-medium py-1.5 px-4 rounded-full border border-zinc-700 transition-all"
+                  className="text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium py-2 px-4 rounded-full border border-zinc-800 transition-all active:scale-95"
                 >
-                  Sign Out
+                  Sign Out Session
                 </button>
               )}
             </div>
           </header>
 
-          {/* Main Dashboard Workspace Display */}
-          <main className="p-6 flex-1">
+          {/* MAIN INTERACTIVE APP CONTENT DISPLAY */}
+          <main className="p-6 flex-1 space-y-8">
+            {/* Dynamic Welcome Showcase Hero Header */}
+            {activeTab === 'home' && (
+              <div className="p-8 rounded-2xl bg-gradient-to-r from-purple-900/30 via-zinc-900/60 to-transparent border border-purple-500/10 relative overflow-hidden group">
+                <div className="absolute -right-10 -top-10 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-500" />
+                <h1 className="text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-400">
+                  Discover SoundSoul
+                </h1>
+                <p className="text-zinc-400 text-sm mt-2 max-w-xl leading-relaxed">
+                  Stream premium original tracks, link active musical platforms, and coordinate your mixed playlists inside a simplified decentralized layout.
+                </p>
+              </div>
+            )}
+
             {user?.role === 'artist' ? (
               <ArtistView 
                 activeTab={activeTab}
@@ -154,7 +162,7 @@ export default function App() {
                 refreshTracks={loadTracks} 
               />
             ) : (
-              <BrowseLandingView 
+              <ListenerView 
                 activeTab={activeTab}
                 tracks={tracks} 
                 currentTrack={currentTrack} 
@@ -166,13 +174,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* --- FLOATING AUTH LAYER INTERFACE (MODAL VIEW) --- */}
+      {/* FLOATING MODAL FORM OVERLAY */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl shadow-black/80">
             <button 
               onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-lg font-bold"
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white text-base transition-colors duration-150"
             >
               ✕
             </button>
@@ -186,25 +194,28 @@ export default function App() {
         </div>
       )}
 
-      {/* --- FOOTER ENGINE --- */}
-      <footer className="h-20 bg-[#181818] border-t border-[#282828] px-4 flex items-center justify-between z-10">
+      {/* AUDIO ENGINE CONTROL FOOTER BAR */}
+      <footer className="h-20 bg-[#0c0a09] border-t border-zinc-900 px-6 flex items-center justify-between z-10">
         <div className="w-1/4 flex items-center gap-3">
           {currentTrack ? (
             <>
-              <div className="w-14 h-14 bg-[#282828] rounded flex items-center justify-center text-[#1ED760]">🎵</div>
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-900 to-zinc-900 rounded-lg flex items-center justify-center text-lg shadow border border-purple-500/20 shadow-purple-500/5">
+                🎵
+              </div>
               <div className="min-w-0">
                 <h4 className="text-sm font-semibold text-white truncate">{currentTrack.title}</h4>
-                <p className="text-xs text-[#b3b3b3] truncate capitalize">{currentTrack.genre}</p>
+                <p className="text-xs text-[#b3b3b3] truncate capitalize tracking-wide">{currentTrack.genre}</p>
               </div>
             </>
           ) : (
-            <span className="text-xs text-[#b3b3b3]">Select a track to start playing</span>
+            <span className="text-xs text-zinc-500 italic">Select a music record to play</span>
           )}
         </div>
+        
         <div className="flex flex-col items-center gap-2 w-2/4 max-w-xl">
           <button 
             onClick={() => handlePlayTrack(currentTrack || tracks[0])}
-            className="p-3 bg-white text-black rounded-full hover:scale-105 transition-transform"
+            className="p-3 bg-white text-black rounded-full hover:scale-110 active:scale-95 transition-all shadow-md"
           >
             {isPlaying ? '⏸️' : '▶️'}
           </button>
@@ -213,9 +224,4 @@ export default function App() {
       </footer>
     </div>
   );
-}
-
-// Simple fallback browse/listener wrapper component for unauthenticated landing routing
-function BrowseLandingView(props) {
-  return <ListenerView {...props} />;
 }

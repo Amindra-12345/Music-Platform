@@ -1,84 +1,100 @@
 import React from 'react';
 
-export default function Sidebar({ userRole, activeTab, setActiveTab, onLogout }) {
+export default function Sidebar({ userRole, activeTab, setActiveTab, onLogout, triggerAuth }) {
   return (
-    <div className="w-64 bg-zinc-950 h-full p-6 flex flex-col justify-between border-r border-zinc-850">
+    <div className="w-64 bg-zinc-950 h-full p-5 flex flex-col justify-between border-r border-zinc-900 rounded-xl">
       <div className="space-y-8">
-        {/* App Title */}
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🎵</span>
-          <h1 className="text-xl font-bold tracking-wider text-white">MusicSync</h1>
+        
+        {/* Brand App Identity */}
+        <div className="flex items-center gap-2.5 px-2 py-1">
+          <span className="text-2xl bg-gradient-to-br from-purple-400 to-indigo-600 bg-clip-text text-transparent">✨</span>
+          <h1 className="text-lg font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-purple-400">
+            SoundSoul
+          </h1>
         </div>
 
-        {/* Navigation Menu Links */}
-        <nav className="space-y-2">
-          <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold px-2 mb-3">Menu</p>
+        {/* Navigation Section */}
+        <nav className="space-y-1.5">
+          <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold px-2 mb-2">Workspace</p>
           
           <button 
             onClick={() => setActiveTab('home')}
-            className={`w-full text-left p-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'home' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+            className={`w-full text-left py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'home' ? 'bg-zinc-900 text-white shadow-sm border border-zinc-800' : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
             }`}
           >
-            🏠 Home Overview
+            🏠 Discovery Feed
           </button>
 
           {userRole === 'artist' ? (
             <>
               <button 
                 onClick={() => setActiveTab('upload')}
-                className={`w-full text-left p-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === 'upload' ? 'bg-purple-950/40 text-purple-400 border border-purple-900/30' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                className={`w-full text-left py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'upload' ? 'bg-purple-950/30 text-purple-400 border border-purple-900/40' : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
                 }`}
               >
-                ➕ Upload Studio
+                ➕ Studio Uploader
               </button>
               <button 
                 onClick={() => setActiveTab('catalog')}
-                className={`w-full text-left p-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === 'catalog' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                className={`w-full text-left py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'catalog' ? 'bg-zinc-900 text-white shadow-sm border border-zinc-800' : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
                 }`}
               >
-                💿 My Releases
+                💿 Released Catalog
               </button>
             </>
-          ) : (
+          ) : userRole === 'listener' ? (
             <>
               <button 
                 onClick={() => setActiveTab('connect')}
-                className={`w-full text-left p-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === 'connect' ? 'bg-green-950/40 text-green-400 border border-green-900/30' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                className={`w-full text-left py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'connect' ? 'bg-zinc-900 text-white shadow-sm border border-zinc-800' : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
                 }`}
               >
-                🔌 Link Platforms
+                🔌 Linked Nodes
               </button>
               <button 
                 onClick={() => setActiveTab('playlists')}
-                className={`w-full text-left p-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === 'playlists' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                className={`w-full text-left py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'playlists' ? 'bg-zinc-900 text-white shadow-sm border border-zinc-800' : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
                 }`}
               >
                 🎧 Mixed Playlists
               </button>
             </>
+          ) : (
+            // Guest View Mode Sidebar Notice
+            <div className="mt-4 p-3 rounded-lg bg-zinc-900/30 border border-zinc-800/60 text-center">
+              <p className="text-[11px] text-zinc-500 font-medium">Log in to unlock custom playlists & music uploads.</p>
+              <button 
+                onClick={triggerAuth}
+                className="mt-2 text-[11px] font-bold text-purple-400 hover:text-purple-350 underline bg-transparent cursor-pointer"
+              >
+                Access Account
+              </button>
+            </div>
           )}
         </nav>
       </div>
 
-      {/* User Status Profile Footer */}
-      <div className="border-t border-zinc-850 pt-4 flex flex-col gap-2">
-        <div>
-          <span className="text-xs text-zinc-500 font-medium block mb-1">Logged in as:</span>
-          <span className="text-xs font-semibold px-2 py-1 rounded bg-zinc-900 border border-zinc-800 inline-block capitalize text-zinc-300">
+      {/* Footer Profile Status Block */}
+      <div className="border-t border-zinc-900 pt-4">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Access Profile</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 capitalize text-zinc-400">
             {userRole}
           </span>
         </div>
-        <button 
-          onClick={onLogout}
-          className="text-left text-xs text-red-400 hover:text-red-300 transition-colors mt-1 px-1"
-        >
-          🚪 Sign Out Session
-        </button>
+        {userRole !== 'guest' && (
+          <button 
+            onClick={onLogout}
+            className="w-full text-left text-xs text-red-400/80 hover:text-red-400 transition-colors mt-3 font-semibold px-1"
+          >
+            🚪 Exit Session
+          </button>
+        )}
       </div>
     </div>
   );
