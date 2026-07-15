@@ -8,12 +8,10 @@ import Register from './pages/Register';
 
 export default function App() {
   // --- Route & View Management States ---
-  // Track isolated full-screen pages: 'dashboard', 'login', or 'register'
   const [currentView, setCurrentView] = useState('dashboard'); 
-  
-  // Track workspace views inside the main dashboard panel
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('home'); 
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSignUpDropdown, setShowSignUpDropdown] = useState(false);
 
   // --- Session & Music Data States ---
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -24,7 +22,6 @@ export default function App() {
   const [audio] = useState(new Audio());
   const [initialRegisterRole, setInitialRegisterRole] = useState('listener');
 
-  // Initialize profile context and fetch unified catalog on mount
   useEffect(() => {
     if (token) {
       setUser({
@@ -35,53 +32,92 @@ export default function App() {
     loadTracks();
   }, [token]);
 
-  // Unified Hybrid API Data Fetching Engine
+  // Comprehensive Hybrid Data Sourcing Pipeline
   const loadTracks = async () => {
     try {
-      // 1. Fetch community uploads from your local Express database setup
+      console.log("🔄 Fetching unified local and global catalogs...");
+      
+      // 1. Local Node Database Fetch
       let communityTracks = [];
       try {
         const res = await fetchTracks();
-        communityTracks = res.data.map(track => ({
-          ...track,
-          imageUrl: track.thumbnailPath 
-            ? `http://localhost:5000/${track.thumbnailPath}` 
-            : "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300",
-          audioUrl: `http://localhost:5000/${track.filePath}`,
-          isInternational: false
-        }));
+        if (res && res.data) {
+          communityTracks = res.data.map(track => ({
+            ...track,
+            imageUrl: track.thumbnailPath 
+              ? `http://localhost:5000/${track.thumbnailPath}` 
+              : "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300",
+            audioUrl: `http://localhost:5000/${track.filePath}`,
+            isInternational: false
+          }));
+        }
       } catch (dbErr) {
-        console.warn("Local backend offline or resting. Loading global charts only.");
+        console.warn("⚠️ Local Express backend resting. Moving to Shazam catalog fallback.", dbErr);
       }
 
-      // 2. Query the live external Shazam Core RapidAPI endpoints
+      // 2. Shazam Core API Remote Query
+      const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
       const apiOptions = {
         method: 'GET',
         headers: {
-          'X-RapidAPI-Key': import.meta.env.VITE_RAPIDAPI_KEY, 
+          'X-RapidAPI-Key': apiKey || '', 
           'X-RapidAPI-Host': 'shazam-core.p.rapidapi.com'
         }
       };
 
-      const globalResponse = await fetch(
-        'https://shazam-core.p.rapidapi.com/v1/search/multi?search_type=SONGS&offset=0&query=top', 
-        apiOptions
-      );
-      const globalData = await globalResponse.json();
+      let internationalTracks = [];
+      try {
+        const globalResponse = await fetch(
+          'https://shazam-core.p.rapidapi.com/v1/search/multi?search_type=SONGS&offset=0&query=Top%20Hits', 
+          apiOptions
+        );
+        const globalData = await globalResponse.json();
+        console.log("📊 API response node received:", globalData);
 
-      // 3. Map complex external nested API items into our flat UI schema components
-      const internationalTracks = (globalData.tracks || []).map(track => ({
-        _id: track.key,
-        title: track.title,
-        genre: track.subtitle || "Global Hit",
-        imageUrl: track.images?.coverart || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300",
-        // Safely extract the preview audio URI string from inside the hub actions block
-        audioUrl: track.hub?.actions?.find(a => a.type === 'uri')?.uri, 
-        isInternational: true
-      }));
+        let extractedTracks = [];
+        if (globalData && globalData.tracks && globalData.tracks.hits) {
+          extractedTracks = globalData.tracks.hits.map(item => item.track);
+        } else if (globalData && globalData.tracks) {
+          extractedTracks = Array.isArray(globalData.tracks) ? globalData.tracks : [];
+        }
 
-      // 4. Merge both arrays into our clean runtime state engine
-      setTracks([...communityTracks, ...internationalTracks]);
+        internationalTracks = extractedTracks.map((track, idx) => ({
+          _id: track?.key || track?.id || `intl-node-${idx}`,
+          title: track?.title || "Unknown Global Track",
+          genre: track?.subtitle || "Global Hit",
+          imageUrl: track?.images?.coverart || track?.images?.background || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300",
+          audioUrl: track?.hub?.actions?.find(a => a.type === 'uri')?.uri || "", 
+          isInternational: true
+        }));
+      } catch (apiErr) {
+        console.warn("⚠️ RapidAPI connection failed or limit reached.", apiErr);
+      }
+
+      // 3. Fallback Mock Database Engine (Guarantees cards load instantly)
+      const mockBackupTracks = [
+        { _id: 'mock-1', title: 'Starlight Symphony', genre: 'Synthwave', imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-2', title: 'Midnight Echoes', genre: 'Lo-Fi Chill', imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-3', title: 'Neon Horizon', genre: 'Cyberpunk', imageUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-4', title: 'Golden Hour Beat', genre: 'R&B Soul', imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-5', title: 'Velocity Core', genre: 'Techno', imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-6', title: 'Ocean Whisper', genre: 'Ambient Ambient', imageUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-7', title: 'Retro Groove', genre: 'Disco Funk', imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-8', title: 'Ethereal Space', genre: 'Dream Pop', imageUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-9', title: 'Solar Flare', genre: 'Progressive House', imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-10', title: 'Digital Rain', genre: 'Glitch Hop', imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-11', title: 'Anirudh Mix', genre: 'Composer Focus', imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-12', title: 'Rahman Vibes', genre: 'Classic Fusion', imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300', audioUrl: '', isInternational: true }
+      ];
+
+      const aggregatedTracks = [...communityTracks, ...internationalTracks];
+      
+      if (aggregatedTracks.length === 0) {
+        console.warn("🔔 API networks empty. Initializing backup mock rows.");
+        setTracks(mockBackupTracks);
+      } else {
+        console.log("🚀 Setting React state catalog list matrix. Elements:", aggregatedTracks.length);
+        setTracks(aggregatedTracks);
+      }
 
     } catch (err) {
       console.error("Critical error building unified music collections:", err);
@@ -89,7 +125,6 @@ export default function App() {
   };
 
   const handlePlayTrack = (track) => {
-    // Intercept guest streams: Force full page authentication routing
     if (!token) {
       setInitialRegisterRole('listener');
       setCurrentView('register');
@@ -105,17 +140,18 @@ export default function App() {
         setIsPlaying(true);
       }
     } else {
-      // Direct asset link conditional resolution
       if (track.isInternational) {
-        audio.src = track.audioUrl;
+        audio.src = track.audioUrl || "";
       } else {
         const mediaPath = track.filePath || track.audioUrl;
         audio.src = `http://localhost:5000/${mediaPath}`.replace(/\/+/g, '/').replace('http:/', 'http://');
       }
       
-      audio.play();
-      setCurrentTrack(track);
-      setIsPlaying(true);
+      if (audio.src && audio.src !== window.location.href) {
+        audio.play().catch(err => console.warn("Audio playback prevented:", err));
+        setCurrentTrack(track);
+        setIsPlaying(true);
+      }
     }
   };
 
@@ -129,13 +165,12 @@ export default function App() {
     setCurrentView('dashboard');
   };
 
-  // Live filter query matching utility
   const filteredTracks = tracks.filter(track => 
-    track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    track.genre.toLowerCase().includes(searchQuery.toLowerCase())
+    track.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    track.genre?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // --- RENDER VIEW 1: DEDICATED FULL-PAGE SIGN IN VIEW ---
+  // --- Modal / Auth View Overrides ---
   if (currentView === 'login') {
     return (
       <div className="w-screen h-screen bg-black flex flex-col justify-center items-center p-4">
@@ -146,7 +181,6 @@ export default function App() {
           >
             ← Back to SoundSoul
           </button>
-          
           <div className="pt-6">
             <Register 
               setToken={(t) => { setToken(t); setCurrentView('dashboard'); }}
@@ -160,7 +194,6 @@ export default function App() {
     );
   }
 
-  // --- RENDER VIEW 2: DEDICATED FULL-PAGE REGISTRATION VIEW ---
   if (currentView === 'register') {
     return (
       <div className="w-screen h-screen bg-black flex flex-col justify-center items-center p-4">
@@ -171,7 +204,6 @@ export default function App() {
           >
             ← Back to SoundSoul
           </button>
-          
           <div className="pt-6">
             <Register 
               setToken={(t) => { setToken(t); setCurrentView('dashboard'); }}
@@ -185,25 +217,20 @@ export default function App() {
     );
   }
 
-  // --- RENDER VIEW 3: MAIN DYNAMIC DASHBOARD WORKSPACE LANDING ---
+  // --- Main Core View Layout Application Layer ---
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden select-none">
       
-      {/* GLOBAL TOP NAVBAR SYSTEM */}
+      {/* App Header Bar Navbar */}
       <header className="h-16 px-6 flex justify-between items-center bg-zinc-950 border-b border-zinc-900 sticky top-0 z-30">
-        
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('home')}>
           <span className="text-xl text-purple-500">✨</span>
-          <h1 className="text-base font-black tracking-tighter text-white">
-            SoundSoul
-          </h1>
+          <h1 className="text-base font-black tracking-tighter text-white">SoundSoul</h1>
         </div>
 
-        {/* Dynamic Catalog Filtration Search Input Bar */}
+        {/* Centralized Catalog Search Field */}
         <div className="w-full max-w-md mx-4 relative group">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm group-focus-within:text-purple-400 transition-colors">
-            🔍
-          </span>
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm group-focus-within:text-purple-400 transition-colors">🔍</span>
           <input 
             type="text"
             value={searchQuery}
@@ -213,97 +240,104 @@ export default function App() {
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Global Access Authorization Buttons Area */}
+        <div className="flex items-center gap-3 relative">
           {!token ? (
             <>
               <button 
-                onClick={() => setCurrentView('login')} 
-                className="text-xs font-bold text-zinc-400 hover:text-white px-3 py-2 transition-colors duration-150"
+                onClick={() => {
+                  setCurrentView('login');
+                  setShowSignUpDropdown(false);
+                }} 
+                className="text-xs font-bold text-zinc-400 hover:text-white px-3 py-2 transition-colors"
               >
                 Sign In
               </button>
-              <button 
-                onClick={() => { setInitialRegisterRole('listener'); setCurrentView('register'); }} 
-                className="text-xs font-bold bg-zinc-900 text-white border border-zinc-800 px-4 py-2 rounded-full hover:bg-zinc-800 transition-all duration-150"
-              >
-                Sign up as Listener
-              </button>
-              <button 
-                onClick={() => { setInitialRegisterRole('artist'); setCurrentView('register'); }} 
-                className="text-xs font-bold bg-purple-600 text-white px-4 py-2 rounded-full hover:bg-purple-500 transition-all duration-150"
-              >
-                Sign up as Artist
-              </button>
+
+              {/* Unified Combined Sign Up Dropdown Component */}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowSignUpDropdown(!showSignUpDropdown)} 
+                  className="text-xs font-bold bg-purple-600 text-white px-5 py-2 rounded-full hover:bg-purple-500 transition-all flex items-center gap-1"
+                >
+                  Sign Up <span className="text-[10px] opacity-80">{showSignUpDropdown ? '▲' : '▼'}</span>
+                </button>
+
+                {showSignUpDropdown && (
+                  <>
+                    {/* Click-away backdrop dismiss shield */}
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowSignUpDropdown(false)} 
+                    />
+                    
+                    <div className="absolute right-0 mt-2 w-48 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl p-1.5 z-50 animate-fade-in">
+                      <button 
+                        onClick={() => {
+                          setInitialRegisterRole('listener');
+                          setCurrentView('register');
+                          setShowSignUpDropdown(false);
+                        }}
+                        className="w-full text-left text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        🎧 <span>Join as Listener</span>
+                      </button>
+                      
+                      <div className="h-px bg-zinc-900 my-1" />
+                      
+                      <button 
+                        onClick={() => {
+                          setInitialRegisterRole('artist');
+                          setCurrentView('register');
+                          setShowSignUpDropdown(false);
+                        }}
+                        className="w-full text-left text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        🎸 <span>Join as Artist</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           ) : (
             <div className="flex items-center gap-4">
-              <span className="text-xs text-zinc-400 font-medium hidden md:inline">
-                Studio Node: <strong className="text-white">{user?.email}</strong>
-              </span>
-              <button 
-                onClick={handleLogout}
-                className="text-xs bg-zinc-900 hover:bg-zinc-850 text-zinc-400 font-bold py-2 px-4 rounded-full border border-zinc-800 transition-all"
-              >
-                Sign Out
-              </button>
+              <span className="text-xs text-zinc-400 font-medium hidden md:inline">Studio Node: <strong className="text-white">{user?.email}</strong></span>
+              <button onClick={handleLogout} className="text-xs bg-zinc-900 hover:bg-zinc-850 text-zinc-400 font-bold py-2 px-4 rounded-full border border-zinc-800 transition-all">Sign Out</button>
             </div>
           )}
         </div>
       </header>
 
-      {/* LOWER PANEL PANES MAP */}
+      {/* Main Structural Wrapper System */}
       <div className="flex flex-1 min-h-0 p-2 gap-2">
+        <Sidebar userRole={user?.role || 'guest'} activeTab={activeTab} setActiveTab={setActiveTab} />
         
-        <Sidebar 
-          userRole={user?.role || 'guest'} 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab}
-        />
-
         <div className="flex-1 bg-gradient-to-b from-zinc-900/60 to-black rounded-xl overflow-y-auto flex flex-col border border-zinc-900/40 relative">
           <main className="p-6 flex-1">
             {activeTab === 'home' && (
               <div className="p-6 mb-6 rounded-xl bg-gradient-to-r from-purple-950/20 via-zinc-900/50 to-transparent border border-purple-500/10">
                 <h2 className="text-2xl font-black text-white">Uncover Fresh Waves</h2>
-                <p className="text-zinc-400 text-xs mt-1">
-                  Streaming live global hits directly from official metadata networks, synced with community creators.
-                </p>
+                <p className="text-zinc-400 text-xs mt-1">Streaming live global hits directly from official metadata networks, synced with community creators.</p>
               </div>
             )}
 
             {user?.role === 'artist' ? (
-              <ArtistView 
-                activeTab={activeTab}
-                tracks={filteredTracks} 
-                currentTrack={currentTrack} 
-                isPlaying={isPlaying} 
-                onPlayTrack={handlePlayTrack} 
-                refreshTracks={loadTracks} 
-              />
+              <ArtistView activeTab={activeTab} tracks={filteredTracks} currentTrack={currentTrack} isPlaying={isPlaying} onPlayTrack={handlePlayTrack} refreshTracks={loadTracks} />
             ) : (
-              <ListenerView 
-                activeTab={activeTab}
-                tracks={filteredTracks} 
-                currentTrack={currentTrack} 
-                isPlaying={isPlaying} 
-                onPlayTrack={handlePlayTrack} 
-              />
+              <ListenerView activeTab={activeTab} tracks={filteredTracks} currentTrack={currentTrack} isPlaying={isPlaying} onPlayTrack={handlePlayTrack} />
             )}
           </main>
         </div>
       </div>
 
-      {/* PERSISTENT FOOTER MEDIA PLAYBACK INTERFACE CONTROLS */}
+      {/* Persistent Global Player Core Audio Deck */}
       <footer className="h-20 bg-zinc-950 border-t border-zinc-900 px-6 flex items-center justify-between z-10">
         <div className="w-1/4 flex items-center gap-3">
           {currentTrack ? (
             <>
               <div className="w-10 h-10 bg-zinc-900 border border-zinc-800 rounded-md flex items-center justify-center text-sm overflow-hidden">
-                {currentTrack.imageUrl ? (
-                  <img src={currentTrack.imageUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  '🎵'
-                )}
+                {currentTrack.imageUrl ? <img src={currentTrack.imageUrl} alt="" className="w-full h-full object-cover" /> : '🎵'}
               </div>
               <div className="min-w-0">
                 <h4 className="text-xs font-bold text-white truncate">{currentTrack.title}</h4>
@@ -324,10 +358,8 @@ export default function App() {
             {isPlaying ? '⏸️' : '▶️'}
           </button>
         </div>
-        
         <div className="w-1/4"></div>
       </footer>
-
     </div>
   );
 }
