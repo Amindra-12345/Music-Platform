@@ -7,13 +7,11 @@ import ListenerView from './components/ListenerView';
 import Register from './pages/Register';
 
 export default function App() {
-  // --- Route & View Management States ---
   const [currentView, setCurrentView] = useState('dashboard'); 
   const [activeTab, setActiveTab] = useState('home'); 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSignUpDropdown, setShowSignUpDropdown] = useState(false);
 
-  // --- Session & Music Data States ---
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(null);
   const [tracks, setTracks] = useState([]);
@@ -21,6 +19,9 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audio] = useState(new Audio());
   const [initialRegisterRole, setInitialRegisterRole] = useState('listener');
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
 
   useEffect(() => {
     if (token) {
@@ -32,12 +33,36 @@ export default function App() {
     loadTracks();
   }, [token]);
 
-  // Comprehensive Hybrid Data Sourcing Pipeline
+  useEffect(() => {
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
+    const onEnded = () => {
+      const idx = tracks.findIndex(t => t._id === currentTrack?._id);
+      const next = tracks[idx + 1];
+      if (next) handlePlayTrack(next);
+      else setIsPlaying(false);
+    };
+
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', onEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [audio, tracks, currentTrack]);
+
+  const formatTime = (secs) => {
+    if (!secs || isNaN(secs)) return '0:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   const loadTracks = async () => {
     try {
-      console.log("🔄 Fetching unified local and global catalogs...");
-      
-      // 1. Local Node Database Fetch
       let communityTracks = [];
       try {
         const res = await fetchTracks();
@@ -47,60 +72,21 @@ export default function App() {
             imageUrl: track.thumbnailPath 
               ? `http://localhost:5000/${track.thumbnailPath}` 
               : "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300",
-            audioUrl: `http://localhost:5000/${track.filePath}`,
+            audioUrl: `http://localhost:5000/${(track.audioUrl || '').replace(/\\/g, '/')}`,
             isInternational: false
           }));
         }
       } catch (dbErr) {
-        console.warn("⚠️ Local Express backend resting. Moving to Shazam catalog fallback.", dbErr);
+        console.warn("Local backend unavailable.", dbErr);
       }
 
-      // 2. Shazam Core API Remote Query
-      const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
-      const apiOptions = {
-        method: 'GET',
-        headers: {
-          'X-RapidAPI-Key': apiKey || '', 
-          'X-RapidAPI-Host': 'shazam-core.p.rapidapi.com'
-        }
-      };
-
-      let internationalTracks = [];
-      try {
-        const globalResponse = await fetch(
-          'https://shazam-core.p.rapidapi.com/v1/search/multi?search_type=SONGS&offset=0&query=Top%20Hits', 
-          apiOptions
-        );
-        const globalData = await globalResponse.json();
-        console.log("📊 API response node received:", globalData);
-
-        let extractedTracks = [];
-        if (globalData && globalData.tracks && globalData.tracks.hits) {
-          extractedTracks = globalData.tracks.hits.map(item => item.track);
-        } else if (globalData && globalData.tracks) {
-          extractedTracks = Array.isArray(globalData.tracks) ? globalData.tracks : [];
-        }
-
-        internationalTracks = extractedTracks.map((track, idx) => ({
-          _id: track?.key || track?.id || `intl-node-${idx}`,
-          title: track?.title || "Unknown Global Track",
-          genre: track?.subtitle || "Global Hit",
-          imageUrl: track?.images?.coverart || track?.images?.background || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300",
-          audioUrl: track?.hub?.actions?.find(a => a.type === 'uri')?.uri || "", 
-          isInternational: true
-        }));
-      } catch (apiErr) {
-        console.warn("⚠️ RapidAPI connection failed or limit reached.", apiErr);
-      }
-
-      // 3. Fallback Mock Database Engine (Guarantees cards load instantly)
       const mockBackupTracks = [
         { _id: 'mock-1', title: 'Starlight Symphony', genre: 'Synthwave', imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300', audioUrl: '', isInternational: true },
         { _id: 'mock-2', title: 'Midnight Echoes', genre: 'Lo-Fi Chill', imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', audioUrl: '', isInternational: true },
         { _id: 'mock-3', title: 'Neon Horizon', genre: 'Cyberpunk', imageUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', audioUrl: '', isInternational: true },
         { _id: 'mock-4', title: 'Golden Hour Beat', genre: 'R&B Soul', imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300', audioUrl: '', isInternational: true },
         { _id: 'mock-5', title: 'Velocity Core', genre: 'Techno', imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', audioUrl: '', isInternational: true },
-        { _id: 'mock-6', title: 'Ocean Whisper', genre: 'Ambient Ambient', imageUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', audioUrl: '', isInternational: true },
+        { _id: 'mock-6', title: 'Ocean Whisper', genre: 'Ambient', imageUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', audioUrl: '', isInternational: true },
         { _id: 'mock-7', title: 'Retro Groove', genre: 'Disco Funk', imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', audioUrl: '', isInternational: true },
         { _id: 'mock-8', title: 'Ethereal Space', genre: 'Dream Pop', imageUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', audioUrl: '', isInternational: true },
         { _id: 'mock-9', title: 'Solar Flare', genre: 'Progressive House', imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', audioUrl: '', isInternational: true },
@@ -109,18 +95,14 @@ export default function App() {
         { _id: 'mock-12', title: 'Rahman Vibes', genre: 'Classic Fusion', imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300', audioUrl: '', isInternational: true }
       ];
 
-      const aggregatedTracks = [...communityTracks, ...internationalTracks];
-      
-      if (aggregatedTracks.length === 0) {
-        console.warn("🔔 API networks empty. Initializing backup mock rows.");
-        setTracks(mockBackupTracks);
+      if (communityTracks.length > 0) {
+        setTracks([...communityTracks, ...mockBackupTracks]);
       } else {
-        console.log("🚀 Setting React state catalog list matrix. Elements:", aggregatedTracks.length);
-        setTracks(aggregatedTracks);
+        setTracks(mockBackupTracks);
       }
 
     } catch (err) {
-      console.error("Critical error building unified music collections:", err);
+      console.error("Error loading tracks:", err);
     }
   };
 
@@ -131,6 +113,8 @@ export default function App() {
       return;
     }
 
+    if (!track) return;
+
     if (currentTrack?._id === track._id) {
       if (isPlaying) {
         audio.pause();
@@ -140,18 +124,18 @@ export default function App() {
         setIsPlaying(true);
       }
     } else {
-      if (track.isInternational) {
-        audio.src = track.audioUrl || "";
-      } else {
-        const mediaPath = track.filePath || track.audioUrl;
-        audio.src = `http://localhost:5000/${mediaPath}`.replace(/\/+/g, '/').replace('http:/', 'http://');
+      const src = track.audioUrl || '';
+      if (!src) {
+        console.warn("No audio URL for this track");
+        return;
       }
-      
-      if (audio.src && audio.src !== window.location.href) {
-        audio.play().catch(err => console.warn("Audio playback prevented:", err));
-        setCurrentTrack(track);
-        setIsPlaying(true);
-      }
+      audio.src = src;
+      audio.play()
+        .then(() => {
+          setCurrentTrack(track);
+          setIsPlaying(true);
+        })
+        .catch(err => console.warn("Playback failed:", err));
     }
   };
 
@@ -170,7 +154,6 @@ export default function App() {
     track.genre?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // --- Modal / Auth View Overrides ---
   if (currentView === 'login') {
     return (
       <div className="w-screen h-screen bg-black flex flex-col justify-center items-center p-4">
@@ -217,18 +200,15 @@ export default function App() {
     );
   }
 
-  // --- Main Core View Layout Application Layer ---
   return (
     <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden select-none">
       
-      {/* App Header Bar Navbar */}
       <header className="h-16 px-6 flex justify-between items-center bg-zinc-950 border-b border-zinc-900 sticky top-0 z-30">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('home')}>
           <span className="text-xl text-purple-500">✨</span>
           <h1 className="text-base font-black tracking-tighter text-white">SoundSoul</h1>
         </div>
 
-        {/* Centralized Catalog Search Field */}
         <div className="w-full max-w-md mx-4 relative group">
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm group-focus-within:text-purple-400 transition-colors">🔍</span>
           <input 
@@ -236,25 +216,20 @@ export default function App() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search titles or genres..."
-            className="w-full bg-zinc-900 border border-zinc-800 text-xs rounded-full py-2 pl-10 pr-4 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/70 focus:bg-zinc-850 transition-all"
+            className="w-full bg-zinc-900 border border-zinc-800 text-xs rounded-full py-2 pl-10 pr-4 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/70 transition-all"
           />
         </div>
 
-        {/* Global Access Authorization Buttons Area */}
         <div className="flex items-center gap-3 relative">
           {!token ? (
             <>
               <button 
-                onClick={() => {
-                  setCurrentView('login');
-                  setShowSignUpDropdown(false);
-                }} 
+                onClick={() => { setCurrentView('login'); setShowSignUpDropdown(false); }} 
                 className="text-xs font-bold text-zinc-400 hover:text-white px-3 py-2 transition-colors"
               >
                 Sign In
               </button>
 
-              {/* Unified Combined Sign Up Dropdown Component */}
               <div className="relative">
                 <button 
                   onClick={() => setShowSignUpDropdown(!showSignUpDropdown)} 
@@ -265,32 +240,17 @@ export default function App() {
 
                 {showSignUpDropdown && (
                   <>
-                    {/* Click-away backdrop dismiss shield */}
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setShowSignUpDropdown(false)} 
-                    />
-                    
-                    <div className="absolute right-0 mt-2 w-48 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl p-1.5 z-50 animate-fade-in">
+                    <div className="fixed inset-0 z-40" onClick={() => setShowSignUpDropdown(false)} />
+                    <div className="absolute right-0 mt-2 w-48 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl p-1.5 z-50">
                       <button 
-                        onClick={() => {
-                          setInitialRegisterRole('listener');
-                          setCurrentView('register');
-                          setShowSignUpDropdown(false);
-                        }}
+                        onClick={() => { setInitialRegisterRole('listener'); setCurrentView('register'); setShowSignUpDropdown(false); }}
                         className="w-full text-left text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2"
                       >
                         🎧 <span>Join as Listener</span>
                       </button>
-                      
                       <div className="h-px bg-zinc-900 my-1" />
-                      
                       <button 
-                        onClick={() => {
-                          setInitialRegisterRole('artist');
-                          setCurrentView('register');
-                          setShowSignUpDropdown(false);
-                        }}
+                        onClick={() => { setInitialRegisterRole('artist'); setCurrentView('register'); setShowSignUpDropdown(false); }}
                         className="w-full text-left text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 px-3 py-2.5 rounded-lg transition-colors flex items-center gap-2"
                       >
                         🎸 <span>Join as Artist</span>
@@ -303,17 +263,16 @@ export default function App() {
           ) : (
             <div className="flex items-center gap-4">
               <span className="text-xs text-zinc-400 font-medium hidden md:inline">Studio Node: <strong className="text-white">{user?.email}</strong></span>
-              <button onClick={handleLogout} className="text-xs bg-zinc-900 hover:bg-zinc-850 text-zinc-400 font-bold py-2 px-4 rounded-full border border-zinc-800 transition-all">Sign Out</button>
+              <button onClick={handleLogout} className="text-xs bg-zinc-900 text-zinc-400 font-bold py-2 px-4 rounded-full border border-zinc-800 transition-all">Sign Out</button>
             </div>
           )}
         </div>
       </header>
 
-      {/* Main Structural Wrapper System */}
       <div className="flex flex-1 min-h-0 p-2 gap-2">
         <Sidebar userRole={user?.role || 'guest'} activeTab={activeTab} setActiveTab={setActiveTab} />
         
-        <div className="flex-1 bg-gradient-to-b from-zinc-900/60 to-black rounded-xl overflow-y-auto flex flex-col border border-zinc-900/40 relative">
+        <div className="flex-1 bg-gradient-to-b from-zinc-900/60 to-black rounded-xl overflow-y-auto flex flex-col border border-zinc-900/40">
           <main className="p-6 flex-1">
             {activeTab === 'home' && (
               <div className="p-6 mb-6 rounded-xl bg-gradient-to-r from-purple-950/20 via-zinc-900/50 to-transparent border border-purple-500/10">
@@ -331,12 +290,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* Persistent Global Player Core Audio Deck */}
-      <footer className="h-20 bg-zinc-950 border-t border-zinc-900 px-6 flex items-center justify-between z-10">
+      <footer className="h-24 bg-zinc-950 border-t border-zinc-900 px-6 flex items-center justify-between z-10">
+        
+        {/* Left — Current Track Info */}
         <div className="w-1/4 flex items-center gap-3">
           {currentTrack ? (
             <>
-              <div className="w-10 h-10 bg-zinc-900 border border-zinc-800 rounded-md flex items-center justify-center text-sm overflow-hidden">
+              <div className="w-10 h-10 bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden flex items-center justify-center text-sm">
                 {currentTrack.imageUrl ? <img src={currentTrack.imageUrl} alt="" className="w-full h-full object-cover" /> : '🎵'}
               </div>
               <div className="min-w-0">
@@ -348,17 +308,77 @@ export default function App() {
             <span className="text-[11px] text-zinc-600 italic">No audio track active</span>
           )}
         </div>
-        
-        <div className="flex flex-col items-center justify-center w-2/4">
-          <button 
-            onClick={() => handlePlayTrack(currentTrack || tracks[0])}
-            className="w-10 h-10 bg-white text-black rounded-full hover:scale-105 active:scale-95 transition-all flex items-center justify-center shadow font-bold text-sm"
-            disabled={tracks.length === 0}
-          >
-            {isPlaying ? '⏸️' : '▶️'}
-          </button>
+
+        {/* Center — Player Controls */}
+        <div className="flex flex-col items-center gap-2 w-2/4 max-w-xl">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                const idx = tracks.findIndex(t => t._id === currentTrack?._id);
+                const prev = tracks[idx - 1];
+                if (prev) handlePlayTrack(prev);
+              }}
+              disabled={!currentTrack}
+              className="text-zinc-400 hover:text-white transition disabled:opacity-30 text-lg"
+            >
+              ⏮️
+            </button>
+
+            <button
+              onClick={() => currentTrack && handlePlayTrack(currentTrack)}
+              disabled={!currentTrack}
+              className="w-10 h-10 bg-white text-black rounded-full hover:scale-105 active:scale-95 transition-all flex items-center justify-center shadow font-bold text-sm"
+            >
+              {isPlaying ? '⏸️' : '▶️'}
+            </button>
+
+            <button
+              onClick={() => {
+                const idx = tracks.findIndex(t => t._id === currentTrack?._id);
+                const next = tracks[idx + 1];
+                if (next) handlePlayTrack(next);
+              }}
+              disabled={!currentTrack}
+              className="text-zinc-400 hover:text-white transition disabled:opacity-30 text-lg"
+            >
+              ⏭️
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 w-full">
+            <span className="text-[10px] text-zinc-500 w-8 text-right">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              value={currentTime}
+              onChange={(e) => {
+                audio.currentTime = Number(e.target.value);
+                setCurrentTime(Number(e.target.value));
+              }}
+              className="flex-1 h-1 accent-purple-500 cursor-pointer"
+            />
+            <span className="text-[10px] text-zinc-500 w-8">{formatTime(duration)}</span>
+          </div>
         </div>
-        <div className="w-1/4"></div>
+
+        {/* Right — Volume Control */}
+        <div className="w-1/4 flex items-center justify-end gap-2">
+          <span className="text-zinc-400 text-sm">🔊</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              audio.volume = val;
+              setVolume(val);
+            }}
+            className="w-24 h-1 accent-purple-500 cursor-pointer"
+          />
+        </div>
       </footer>
     </div>
   );
